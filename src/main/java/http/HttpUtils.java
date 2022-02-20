@@ -2,66 +2,118 @@ package http;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class HttpUtils {
 
-    public static Document postUser(String url, Person person) throws IOException {
-        return Jsoup.connect(url)
-                .requestBody(new Gson().toJson(person))
-                .ignoreContentType(true)
-                .ignoreHttpErrors(true)
-                .post();
+    public static String postUser(String url, User person) throws IOException, InterruptedException {
+        return sendHttpRequest(url.concat("/users"), person, "POST");
     }
 
-//    public static Document updateUser(String url, Person person) throws IOException {
-//        Jsoup.connect(url).
-//    }
-
-
-    public static List<Person> getAllUsers(String url) throws IOException {
-        String json = getHTML(url);
-
-        return convertJsonToCollection(json);
+    public static String updateUser(String url, User person) throws IOException, InterruptedException {
+        url = url.concat("/users").concat("/").concat(Integer.toString(person.getId()));
+        return sendHttpRequest(url, person, "PUT");
     }
 
-    public static List<Person> getUserById(String url, int id) throws IOException {
-        String json = getHTML(url);
+    public static String deleteUser(String url, User person) throws IOException, InterruptedException {
+        url = url.concat("/users").concat("/").concat(Integer.toString(person.getId()));
+        return sendHttpRequest(url, person, "DELETE");
+    }
 
-        List<Person> list = convertJsonToCollection(json);
+    public static List<User> getAllUsers(String url) throws IOException, InterruptedException {
+        return convertJsonToUsersCollection(sendHttpRequest(url.concat("/users"), null, "GET"));
+    }
 
-        return list.stream().
-                filter(person -> person.getId() == id)
+    public static List<User> getUserById(String url, int id) throws IOException, InterruptedException {
+        return convertJsonToUsersCollection(sendHttpRequest(url.concat("/users"), null, "GET"))
+                .stream()
+                .filter(person -> person.getId() == id)
                 .collect(Collectors.toList());
     }
 
-    public static List<Person> getUserByUserName(String url, String userName) throws IOException {
-        String json = getHTML(url);
-
-        List<Person> list = convertJsonToCollection(json);
-
-        return list.stream().
-                filter(person -> person.getUsername().equals(userName))
+    public static List<User> getUserByUserName(String url, String userName) throws IOException, InterruptedException {
+        return convertJsonToUsersCollection(sendHttpRequest(url.concat("/users"), null, "GET"))
+                .stream()
+                .filter(person -> person.getUsername().equals(userName))
                 .collect(Collectors.toList());
     }
 
-    private static String getHTML(String url) throws IOException {
-        return Jsoup.connect(url)
-                .ignoreContentType(true)
-                .get()
-                .body()
-                .html();
+    public static File filingAllComments(String url, User person) throws IOException, InterruptedException {
+        String postsUrl = url.concat("/users/").concat(Integer.toString(person.getId())).concat("/posts");
+        String allPosts = sendHttpRequest(postsUrl, person, "GET");
+        List<Post> posts = convertJsonToPostsCollection(allPosts);
+        String commentsUrl = url.concat("/posts/").concat(Integer.toString(posts.size()-1)).concat("/comments");
+        String allComments = sendHttpRequest(commentsUrl, person, "GET");
+        List<Comment> comments = convertJsonToCommentsCollection(allComments);
+
+        File file = new File("./user-"
+                .concat(Integer.toString(person.getId()))
+                .concat("-post-")
+                .concat(Integer.toString(posts.size()-1))
+                .concat("-comments.json"));
+
+        OutputStream os = new FileOutputStream(file);
+
+        for (Comment comment : comments) {
+            os.write(comment.toString().getBytes());
+            os.write("\n".getBytes());
+        }
+        os.close();
+        return file;
     }
 
-    private static List<Person> convertJsonToCollection(String json) {
-        Type listOfPersons = new TypeToken<ArrayList<Person>>(){}.getType();
-        return new Gson().fromJson(json, listOfPersons);
+    public static void printUncompeledTask(String url, User user) throws IOException, InterruptedException {
+        url = url.concat("/users/").concat(Integer.toString(user.getId())).concat("/todos");
+        String allTasks = sendHttpRequest(url, user, "GET");
+        List<Task> tasks = convertJsonToTaskCollection(allTasks);
+        tasks.stream()
+                .filter(it -> !it.isCompleted())
+                .forEach(System.out::println);
+    }
+
+    private static String sendHttpRequest(String url, User user, String method) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(java.net.URI.create(url))
+                .timeout(Duration.of(10, ChronoUnit.SECONDS))
+                .header("Content-Type", "application/json")
+                .method(method, HttpRequest.BodyPublishers.ofString(new Gson().toJson(user)))
+                .build();
+        System.out.println(request);
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Status code: " + response.statusCode());
+        return response.body();
+    }
+
+    private static List<User> convertJsonToUsersCollection(String json) {
+        Type list = new TypeToken<ArrayList<User>>(){}.getType();
+        return new Gson().fromJson(json, list);
+    }
+
+    private static List<Post> convertJsonToPostsCollection(String json) {
+        Type list = new TypeToken<ArrayList<Post>>(){}.getType();
+        return new Gson().fromJson(json, list);
+    }
+
+    private static List<Comment> convertJsonToCommentsCollection(String json) {
+        Type list = new TypeToken<ArrayList<Comment>>(){}.getType();
+        return new Gson().fromJson(json, list);
+    }
+
+    private static List<Task> convertJsonToTaskCollection(String json) {
+        Type list = new TypeToken<ArrayList<Task>>(){}.getType();
+        return new Gson().fromJson(json, list);
     }
 }

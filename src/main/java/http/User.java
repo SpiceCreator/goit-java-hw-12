@@ -1,6 +1,6 @@
 package http;
 
-public class Person {
+public class User {
     private final int id;
     private final String name;
     private final String username;
@@ -10,8 +10,8 @@ public class Person {
     private final String website;
     private final Company company;
 
-    public Person(int id, String name, String username, String email, String street, String suite, String city, String zipcode,
-                  String lat, String lng, String phone, String website, String companyName, String catchPhrase, String bs) {
+    public User(int id, String name, String username, String email, String street, String suite, String city, String zipcode,
+                String lat, String lng, String phone, String website, String companyName, String catchPhrase, String bs) {
         this.id = id;
         this.name = name;
         this.username = username;
@@ -24,7 +24,7 @@ public class Person {
 
 
 
-    private static class Address {
+    static class Address {
         private final String street;
         private final String suite;
         private final String city;
@@ -70,7 +70,7 @@ public class Person {
                     " }";
         }
 
-        private static class Geo {
+        static class Geo {
             private final String lat;
             private final String lng;
 
@@ -99,7 +99,7 @@ public class Person {
     }
 
 
-    private static class Company {
+    static class Company {
         private final String name;
         private final String catchPhrase;
         private final String bs;
