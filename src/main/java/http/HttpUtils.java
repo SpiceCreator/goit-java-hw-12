@@ -33,19 +33,19 @@ public class HttpUtils {
     }
 
     public static List<User> getAllUsers(String url) throws IOException, InterruptedException {
-        return convertJsonToUsersCollection(sendHttpRequest(url.concat("/users"), null, "GET"));
+        return convertJsonToCollection(sendHttpRequest(url.concat("/users"), null, "GET"), User.class);
     }
 
     public static List<User> getUserById(String url, int id) throws IOException, InterruptedException {
-        return convertJsonToUsersCollection(sendHttpRequest(url.concat("/users"), null, "GET"))
-                .stream()
+        List<User> list = convertJsonToCollection(sendHttpRequest(url.concat("/users"), null, "GET"), User.class);
+        return list.stream()
                 .filter(person -> person.getId() == id)
                 .collect(Collectors.toList());
     }
 
     public static List<User> getUserByUserName(String url, String userName) throws IOException, InterruptedException {
-        return convertJsonToUsersCollection(sendHttpRequest(url.concat("/users"), null, "GET"))
-                .stream()
+        List<User> list = convertJsonToCollection(sendHttpRequest(url.concat("/users"), null, "GET"), User.class);
+        return list.stream()
                 .filter(person -> person.getUsername().equals(userName))
                 .collect(Collectors.toList());
     }
@@ -53,10 +53,10 @@ public class HttpUtils {
     public static File filingAllComments(String url, User person) throws IOException, InterruptedException {
         String postsUrl = url.concat("/users/").concat(Integer.toString(person.getId())).concat("/posts");
         String allPosts = sendHttpRequest(postsUrl, person, "GET");
-        List<Post> posts = convertJsonToPostsCollection(allPosts);
+        List<Post> posts = convertJsonToCollection(allPosts, Post.class);
         String commentsUrl = url.concat("/posts/").concat(Integer.toString(posts.size()-1)).concat("/comments");
         String allComments = sendHttpRequest(commentsUrl, person, "GET");
-        List<Comment> comments = convertJsonToCommentsCollection(allComments);
+        List<Comment> comments = convertJsonToCollection(allComments, Comment.class);
 
         File file = new File("./user-"
                 .concat(Integer.toString(person.getId()))
@@ -77,7 +77,7 @@ public class HttpUtils {
     public static void printUncompeledTask(String url, User user) throws IOException, InterruptedException {
         url = url.concat("/users/").concat(Integer.toString(user.getId())).concat("/todos");
         String allTasks = sendHttpRequest(url, user, "GET");
-        List<Task> tasks = convertJsonToTaskCollection(allTasks);
+        List<Task> tasks = convertJsonToCollection(allTasks, Task.class);
         tasks.stream()
                 .filter(it -> !it.isCompleted())
                 .forEach(System.out::println);
@@ -97,23 +97,14 @@ public class HttpUtils {
         return response.body();
     }
 
-    private static List<User> convertJsonToUsersCollection(String json) {
-        Type list = new TypeToken<ArrayList<User>>(){}.getType();
-        return new Gson().fromJson(json, list);
-    }
-
-    private static List<Post> convertJsonToPostsCollection(String json) {
-        Type list = new TypeToken<ArrayList<Post>>(){}.getType();
-        return new Gson().fromJson(json, list);
-    }
-
-    private static List<Comment> convertJsonToCommentsCollection(String json) {
-        Type list = new TypeToken<ArrayList<Comment>>(){}.getType();
-        return new Gson().fromJson(json, list);
-    }
-
-    private static List<Task> convertJsonToTaskCollection(String json) {
-        Type list = new TypeToken<ArrayList<Task>>(){}.getType();
-        return new Gson().fromJson(json, list);
+    public static <T> List<T> convertJsonToCollection(String json, Class clazz) {
+        List<T> resultList = new ArrayList<>();
+        Gson gson = new Gson();
+        Type type = new TypeToken<ArrayList<T>>(){}.getType();
+        List<Object> list = gson.fromJson(json, type);
+        for (Object o : list) {
+            resultList.add((T) gson.fromJson(gson.toJson(o), clazz));
+        }
+        return resultList;
     }
 }
