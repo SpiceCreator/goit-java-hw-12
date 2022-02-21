@@ -97,7 +97,7 @@ public class HttpUtils {
         return response.body();
     }
 
-    public static <T> List<T> convertJsonToCollection(String json, Class clazz) {
+    private static <T> List<T> convertJsonToCollection(String json, Class clazz) {
         List<T> resultList = new ArrayList<>();
         Gson gson = new Gson();
         Type type = new TypeToken<ArrayList<T>>(){}.getType();
