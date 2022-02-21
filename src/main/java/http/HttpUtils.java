@@ -11,6 +11,7 @@ import java.lang.reflect.Type;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -55,8 +56,6 @@ public class HttpUtils {
         String allPosts = sendHttpRequest(postsUrl, person, "GET");
         List<Post> posts = convertJsonToCollection(allPosts, Post.class);
         String commentsUrl = url.concat("/posts/").concat(Integer.toString(posts.size()-1)).concat("/comments");
-        String allComments = sendHttpRequest(commentsUrl, person, "GET");
-        List<Comment> comments = convertJsonToCollection(allComments, Comment.class);
 
         File file = new File("./user-"
                 .concat(Integer.toString(person.getId()))
@@ -66,10 +65,8 @@ public class HttpUtils {
 
         OutputStream os = new FileOutputStream(file);
 
-        for (Comment comment : comments) {
-            os.write(comment.toString().getBytes());
-            os.write("\n".getBytes());
-        }
+        os.write(sendHttpRequest(commentsUrl, person, "GET").getBytes());
+
         os.close();
         return file;
     }
